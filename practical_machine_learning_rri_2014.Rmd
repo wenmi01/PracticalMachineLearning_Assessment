@@ -1,0 +1,73 @@
+---
+title: "Practical Machine Learning Assessment"
+author: "Rowen Remis R. Iral"
+date: "Sunday, July 27, 2014"
+output: html_document
+---
+
+#Practical Machine Learning Assessment
+### Applying machine learning using R
+  Jawbone Up, Nike FuelBand, and Fitbit can now collect vast amount of data using devices.  With these devices we can now quantify alot of data.
+
+###Data Sources
+The training data for this project are available here: 
+  
+  https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+  
+  https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+http://groupware.les.inf.puc-rio.br/har - Weight Lifting Exercise data
+
+###Data
+```{r}
+library(ggplot2)
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+
+###Counting Training data
+```{r}
+dim(training)
+```
+There are 19622 rows and 160 variables in training data.
+
+###Counting Testing data
+```{r}
+dim(testing)
+```
+There are 20 rows and 160 columns in the testing data.
+
+###Get Variable names
+```{r}
+names(training)
+```
+
+
+###Caret modeling
+```{r}
+library(caret)
+library(rpart)
+modFit <- train(classe ~ ., data=training, method="rpart")
+print(modFit$finalModel)
+```
+
+###Plot Tree
+```{r}
+plot(modFit$finalModel, uniform = TRUE, main="Classe Tree")
+text(modFit$finalModel, use.n=TRUE, all=TRUE, cex=.8)
+```
+
+###Prettier Plot
+```{r}
+library(rattle)
+fancyRpartPlot(modFit$finalModel)
+```
+
+###Predicting new values
+```{r}
+predict(modFit,newdata=testing)
+```
+
+

@@ -1,13 +1,18 @@
 ---
 title: "Practical Machine Learning Assessment"
 author: "Rowen Remis R. Iral"
-date: "Sunday, July 27, 2014"
+date: "Friday, August 22, 2014"
 output: html_document
 ---
 
 #Practical Machine Learning Assessment
 ### Applying machine learning using R
   Jawbone Up, Nike FuelBand, and Fitbit can now collect vast amount of data using devices.  With these devices we can now quantify alot of data.
+  
+### Set your Working Directory
+```{r}
+# setwd("E:/Other Business/Data Scientist/Data Science Track/Practical Machine Learning/assessment_project/PracticalMachineLearning_Assessment/")
+```
 
 ###Data Sources
 The training data for this project are available here: 
@@ -20,54 +25,138 @@ The test data are available here:
 
 http://groupware.les.inf.puc-rio.br/har - Weight Lifting Exercise data
 
+###knitr Settings
+```{r}
+library(knitr)
+opts_chunk$set(echo = TRUE, results = 'hold')
+```
+
+###Load Library
+```{r}
+library(ElemStatLearn)
+library(caret)
+library(rpart)
+library(randomForest)
+set.seed(123)
+```
+
 ###Data
 ```{r}
 library(ggplot2)
-training <- read.csv("pml-training.csv")
-testing <- read.csv("pml-testing.csv")
+pml_train <- read.csv("pml-training.csv", header=TRUE, sep=",", na.strings=c("NA",""))
+
+pml_train <- pml_train[,-1] #Remove Column ID row
+
+#pml_train$interval <- factor(pml_train$interval)
+#pml_train$date <- as.Date(pml_train$date, format="%Y-%m-%d")
+
+pml_test <- read.csv("pml-testing.csv", header=TRUE, sep=",", na.strings=c("NA",""))
+
+pml_test <- pml_test[,-1]
+
+#pml_test$interval <- factor(pml_test$interval)
+#pml_test$date <- as.Date(pml_test$date, format="%Y-%m-%d")
 ```
 
 ###Counting Training data
 ```{r}
-dim(training)
+dim(pml_train)
 ```
-There are 19622 rows and 160 variables in training data.
+There are 19622 rows and 160 variables in pml_train data.
 
 ###Counting Testing data
 ```{r}
-dim(testing)
+dim(pml_test)
 ```
-There are 20 rows and 160 columns in the testing data.
+There are 20 rows and 160 columns in the pml_test data.
 
-###Get Variable names
+###Get Variable names in pml_train
 ```{r}
-names(training)
+names(pml_train)
+```
+
+###Get Variable names in pml_test
+```{r}
+names(pml_test)
 ```
 
 
-###Caret modeling
+###Modeling Training Data
 ```{r}
 library(caret)
-library(rpart)
-modFit <- train(classe ~ ., data=training, method="rpart")
-print(modFit$finalModel)
+inTrain = createDataPartition(pml_train$classe, p=0.60, list=FALSE)
+training = pml_train[inTrain,]
+validating = pml_train[-inTrain,]
 ```
 
-###Plot Tree
+
+###Get number of columns with less than 60% of data
 ```{r}
-plot(modFit$finalModel, uniform = TRUE, main="Classe Tree")
-text(modFit$finalModel, use.n=TRUE, all=TRUE, cex=.8)
+sum((colSums(!is.na(training[,-ncol(training)])) < 0.6*nrow(training)))
 ```
 
-###Prettier Plot
+###Remove columns that doesn't have data
 ```{r}
-library(rattle)
-fancyRpartPlot(modFit$finalModel)
+Keep <- c((colSums(!is.na(training[,-ncol(training)])) >= 0.6*nrow(training)))
+training   <-  training[,Keep]
+validating <- validating[,Keep]
 ```
 
-###Predicting new values
+###Random Forest Modeling
 ```{r}
-predict(modFit,newdata=testing)
+library(randomForest)
+model <- randomForest(classe~.,data=training)
+print(model)
 ```
 
+###Evaluate Model
+Get the important data
+```{r}
+importance(model)
+```
 
+###Use Confusion Matrix for Evaluation
+```{r}
+confusionMatrix(predict(model,newdata=validating[,-ncol(validating)]),validating$classe)
+```
+
+###Calculate accuracy
+The accuracy is: 99.84706 %
+```{r}
+accuracy<-c(as.numeric(predict(model,newdata=validating[,-ncol(validating)])==validating$classe))
+accuracy<-sum(accuracy)*100/nrow(validating)
+print(accuracy)
+```
+
+###Modeling Test Data
+```{r}
+pml_test <- pml_test[ , Keep] #Keep the same columns as of testing dataset
+pml_test <- pml_test[,-ncol(pml_test)] # Remove the Problem ID
+```
+
+###Transform and Coerce Testing Data Set
+```{r}
+testing <- rbind(training[100, -59] , pml_test) 
+row.names(testing) <- c(100, 1:20)
+```
+
+###Predict with Test Data
+```{r}
+predictions <- predict(model,newdata=testing[-1,])
+print(predictions)
+```
+
+###Submitting Answers
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictions)
+```
+
+The answers will be checked by the checker, as most random forest predicts with high accuracy, we can see its results.
